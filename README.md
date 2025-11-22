@@ -1,188 +1,235 @@
 🌍 Multi-Agent Tourism Assistant
 
-A smart, AI-powered travel assistant built using Streamlit.
-
-This project is a real-time tourism assistant that helps users:
-
-🔎 Detect the city/place from any natural-language question
-
-☁️ Get live weather information for the city
-
-📍 Discover popular tourist attractions near that city
-
-🧠 Use separate agents (Weather Agent + Places Agent + Orchestrator)
-
-💬 Understand complex questions, not just simple ones
-
-The entire system works with free APIs, no API keys for tourist places, and runs smoothly on Streamlit Cloud & mobile devices.
+A smart, AI-powered Trip Planner built with Python, Streamlit, Async Agents, Wikipedia API, OpenStreetMap (Overpass) and WeatherAPI.
+It understands natural language queries and gives weather, tourist attractions, Wikipedia images, and summaries for any place.
 
 🚀 Features
-✅ 1. Smart NLP-based place detection
+🧠 1. Natural Language Query Understanding
 
-Understands user queries like:
+Ask anything like:
 
-"I’m planning a trip to Bangalore, what’s the weather and places I can visit?"
+"I'm going to Bangalore, tell me weather and places to visit."
 
-"Plan my trip to Goa"
+"Weather in Delhi?"
 
-"What are the attractions near Ooty?"
+"Suggest top tourist places in Goa."
 
-✅ 2. Real Weather Data
+Your text is processed through an NLP-based place detector (regex + smart cleaning) from the orchestrator module.
+(See agents/orchestrator.py 
 
-Using WeatherAPI
-✔ Temperature
-✔ Rain chance
-✔ Cloud info
+orchestrator
 
-✅ 3. Tourist Places (NO API KEY NEEDED)
+)
 
-Uses Wikipedia GeoSearch API:
-✔ Highly reliable
-✔ Fast
-✔ Cloud-safe
-✔ Accurate tourist attractions
+🌦️ 2. Real Weather Data (WeatherAPI)
 
-✅ 4. Multi-Agent Architecture
+Powered by weather_agent.py 
 
-Weather Agent → Fetches live weather
+weather_agent
 
-Places Agent → Fetches attractions
+Temperature
 
-Orchestrator → Detects intent & merges agent responses
+Chance of rain
 
-✅ 5. Fully Deployable
+Cloud %
 
-Works perfectly on:
+City-level accurate weather
 
-Streamlit Cloud
+Requires a free API key from:
+👉 https://www.weatherapi.com/
 
-Desktop
+Add it in .env:
 
-Mobile
+WEATHER_API_KEY=YOUR_KEY_HERE
 
-📦 Project Structure
-inkel_assignment/
+🧭 3. Real Tourist Places from OpenStreetMap (Overpass API)
+
+Using OpenStreetMap →
+places_agent.py 
+
+places_agent
+
+ fetches attractions like:
+
+beaches
+
+museums
+
+forts
+
+viewpoints
+
+parks
+
+monuments
+
+The agent filters noisy data (hotels, lodges, residences).
+
+📸 4. Wikipedia Images + Summaries
+
+Every place is enriched with:
+
+Thumbnail (500px)
+
+Extract (summary)
+
+Description
+
+Popularity Score
+
+Thanks to the Wikipedia API:
+
+WIKI_SEARCH_URL = "https://en.wikipedia.org/w/api.php?...”
+
+📍 5. Geocoding (Convert City → Lat/Lon)
+
+Using the Nominatim API (OpenStreetMap)
+utils/geocode.py 
+
+geocode
+
+🖥️ 6. Beautiful Streamlit UI
+
+Your UI (app.py) 
+
+app
+
+:
+
+Input box
+
+Loading spinner
+
+Final response text
+
+Debug info section
+
+Easy interaction
+
+🧩 Project Structure
+📁 tourism-assistant/
+│── app.py                     # Streamlit UI
+│── requirements.txt           
+│── .env                       # WeatherAPI key
+│── README.md
 │
-├── app.py
 ├── agents/
-│   ├── orchestrator.py
-│   ├── weather_agent.py
-│   └── places_agent.py
-├── utils/
-│   └── geocode.py
-├── .env
-└── README.md
+│   ├── orchestrator.py        # Controls workflow (weather + places)
+│   ├── places_agent.py        # OSM + Wikipedia tourist places
+│   └── weather_agent.py       # WeatherAPI client
+│
+└── utils/
+    └── geocode.py             # Nominatim geocoder
 
-⚙️ Setup Instructions
+⚙️ Installation
 1️⃣ Clone the Repository
-git clone https://github.com/your-username/your-repo.git
-cd your-repo
+git clone https://github.com/yourusername/tourism-multi-agent.git
+cd tourism-multi-agent
 
 2️⃣ Create Virtual Environment
 python -m venv .venv
-
-
-Activate:
-
-Windows
-.venv\Scripts\activate
-
-Mac/Linux
-source .venv/bin/activate
+source .venv/bin/activate  # Mac/Linux
+.venv\Scripts\activate     # Windows
 
 3️⃣ Install Dependencies
 pip install -r requirements.txt
 
-4️⃣ Add Weather API Key
+4️⃣ Add API Key
 
 Create a .env file:
 
-WEATHER_API_KEY=your_api_key_here
+WEATHER_API_KEY=YOUR_KEY
 
-
-For Streamlit Cloud → Add inside Secrets:
-
-WEATHER_API_KEY = "your_api_key_here"
-
-5️⃣ Run the App
+5️⃣ Run App
 streamlit run app.py
 
-🌐 APIs Used
-1. WeatherAPI
-
-Free
-
-Accurate
-
-Requires API key
-
-2. Wikipedia GeoSearch (NO API KEY NEEDED)
-
-Used for tourist attractions:
-
-https://en.wikipedia.org/w/api.php
-
-Extremely fast
-
-Cloud-safe
-
-🔧 Core Logic Summary
+🧠 How It Works (Architecture)
 1. Orchestrator Agent
 
-Detects place
+Controls the full pipeline:
 
-Detects intent (weather, places, both)
+Detects place from text
 
-Calls respective agents
+Detects intent (weather / places / both)
 
-Merges output
+Calls the appropriate agents
+
+Combines responses into clean output
 
 2. Weather Agent
 
-Fetches real-time weather using WeatherAPI.
+Uses WeatherAPI →
+Returns temperature, cloud %, rain chance.
 
 3. Places Agent
 
-Uses Wikipedia’s GeoSearch:
+Pipeline:
 
-Gets coordinates
+Find coordinates from geocoder
 
-Finds nearby attractions
+Query Overpass API for tourist attractions
 
-Filters out non-tourist spots
+Clean + dedupe results
 
-📱 Fully Mobile Friendly
+Fetch Wikipedia thumbnails + summaries
 
-App works perfectly on:
+Compute popularity score
 
-Android
+Sort and return best places
 
-iPhone
+4. UI Layer
 
-Tablets
+Streamlit frontend for user interaction.
 
-Desktop
+💡 Example Queries
 
-🌟 Example Query
+Try:
 
-User:
+"I'm going to Bangalore, what’s the weather and places to visit?"
 
-I’m going to go to Manali next week, what’s the temperature and places I can visit?
+"Weather in Jaipur"
 
-Response:
-✔ Weather in Manali
-✔ Popular places like Hidimba Devi Temple, Solang Valley, Jogini Waterfall, Museum of Himachal Culture, etc.
+"Suggest some tourist places in Goa"
 
-📤 Deployment (Streamlit Cloud)
+"Plan trip to Manali"
 
-Upload project to GitHub
+📝 Requirements
 
-Go to https://streamlit.io/cloud
+Minimal version (auto-detectable from your project):
 
-Create new app
+streamlit
+httpx
+python-dotenv
+asyncio
+pytz
 
-Select repo + branch
+🧪 Debugging
 
-Add API key in Secrets
+A debug section in the UI shows:
 
-Deploy 🎉
+Detected place
+
+Detected intent
+
+Raw weather response
+
+Raw places list
+
+Scores
+
+Perfect for assignment submissions.
+
+🤝 Contributing
+
+Pull requests welcome!
+You can add:
+
+More agents
+
+Better NLP
+
+Sentiment analysis
+
+Road distances
+
+Hotel finder agent
