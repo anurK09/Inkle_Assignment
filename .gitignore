@@ -1,0 +1,76 @@
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.log
+
+# Byte-compiled
+*.py[cod]
+*$py.class
+
+# -----------------------------
+# Virtual Environment
+# -----------------------------
+.venv/
+venv/
+ENV/
+env/
+
+# -----------------------------
+# Streamlit
+# -----------------------------
+.streamlit/
+**/.streamlit/
+
+# -----------------------------
+# Cache
+# -----------------------------
+.cache/
+.python-version
+pip-wheel-metadata/
+pip-selfcheck.json
+
+# -----------------------------
+# Environment Variables
+# -----------------------------
+.env
+.env.local
+.env.*.local
+
+# -----------------------------
+# VS Code
+# -----------------------------
+.vscode/
+*.code-workspace
+
+# -----------------------------
+# OS-specific
+# -----------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -----------------------------
+# Build / Dist
+# -----------------------------
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# -----------------------------
+# Uploaded images / files
+# (if your project has an uploads folder)
+# -----------------------------
+uploads/
+dataset/
