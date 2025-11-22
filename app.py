@@ -6,7 +6,7 @@ import streamlit as st
 from agents.orchestrator import handle_user_query
 
 st.set_page_config(
-    page_title="Inkel Tourism Assistant",
+    page_title="Inkle Tourism Assistant",
     page_icon="🌍",
     layout="centered",
 )
