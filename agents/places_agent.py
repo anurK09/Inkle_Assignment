@@ -1,92 +1,19 @@
+
 # agents/places_agent.py
 
 import httpx
-import urllib.parse
 from utils.geocode import geocode_place
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
-# Wikipedia API – thumbnail + summary
-WIKI_SEARCH_URL = (
-    "https://en.wikipedia.org/w/api.php?"
-    "action=query&prop=pageimages|extracts&exintro&explaintext&format=json"
-    "&pithumbsize=500&titles={}"
-)
 
-
-async def fetch_wikipedia_details(place_name: str):
+async def get_places_for_place(place_name: str, max_places: int = 6):
     """
-    Fetch thumbnail + summary for a place from Wikipedia.
-    Returns dict or None.
-    """
-    title = urllib.parse.quote(place_name)
-    url = WIKI_SEARCH_URL.format(title)
-
-    headers = {"User-Agent": "inkel-tourism-ai/1.0"}
-
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            resp = await client.get(url, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception:
-            return None
-
-    pages = data.get("query", {}).get("pages", {})
-    if not pages:
-        return None
-
-    page = next(iter(pages.values()))
-
-    thumbnail = None
-    if "thumbnail" in page and "source" in page["thumbnail"]:
-        thumbnail = page["thumbnail"]["source"]
-
-    summary = page.get("extract", "") or ""
-    wiki_title = page.get("title", place_name)
-    description = page.get("description", "") or ""
-
-    # Popularity score heuristic
-    score = 0.0
-    if thumbnail:
-        score += 2.0
-    if summary:
-        score += min(len(summary) / 200, 3.0)
-    if any(
-        k in description.lower()
-        for k in ["tourist", "temple", "beach", "fort", "museum", "park", "palace"]
-    ):
-        score += 1.5
-
-    return {
-        "wiki_title": wiki_title,
-        "thumbnail": thumbnail,
-        "summary": summary,
-        "description": description,
-        "popularity_score": score,
-    }
-
-
-async def get_places_for_place(place_name: str, max_places: int = 5):
-    """
-    Returns:
-    {
-      "success": bool,
-      "message": str,
-      "places": [
-        {
-          "name": str,
-          "wiki_title": str,
-          "thumbnail": str | None,
-          "summary": str,
-          "description": str,
-          "popularity_score": float
-        }, ...
-      ]
-    }
+    Fetch tourist attractions using ONLY Overpass (OpenStreetMap).
+    Works on Streamlit Cloud + Mobile.
     """
 
-    lat, lon, display = await geocode_place(place_name)
+    lat, lon, display_name = await geocode_place(place_name)
 
     if lat is None or lon is None:
         return {
@@ -95,21 +22,28 @@ async def get_places_for_place(place_name: str, max_places: int = 5):
             "places": [],
         }
 
-    # Overpass query – 10km radius
+    # OSM Query (tourism, historic, leisure)
     query = f"""
 [out:json][timeout:30];
 (
-  node["tourism"~"attraction|museum|gallery|zoo|viewpoint|artwork|park|castle|ruins|monument"](around:10000,{lat},{lon});
-  way["tourism"~"attraction|museum|gallery|zoo|viewpoint|artwork|park|castle|ruins|monument"](around:10000,{lat},{lon});
-  relation["tourism"~"attraction|museum|gallery|zoo|viewpoint|artwork|park|castle|ruins|monument"](around:10000,{lat},{lon});
+  node["tourism"~"attraction|museum|zoo|gallery|viewpoint|theme_park|artwork"](around:8000,{lat},{lon});
+  way["tourism"~"attraction|museum|zoo|gallery|viewpoint|theme_park|artwork"](around:8000,{lat},{lon});
+  relation["tourism"~"attraction|museum|zoo|gallery|viewpoint|theme_park|artwork"](around:8000,{lat},{lon});
+
+  node["historic"~"fort|monument|ruins|castle|memorial"](around:8000,{lat},{lon});
+  way["historic"~"fort|monument|ruins|castle|memorial"](around:8000,{lat},{lon});
+  relation["historic"~"fort|monument|ruins|castle|memorial"](around:8000,{lat},{lon});
+
+  node["leisure"~"park|garden"](around:8000,{lat},{lon});
+  way["leisure"~"park|garden"](around:8000,{lat},{lon});
+  relation["leisure"~"park|garden"](around:8000,{lat},{lon});
 );
 out center;
 """
 
     try:
-        async with httpx.AsyncClient(timeout=25.0) as client:
+        async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.post(OVERPASS_URL, data={"data": query})
-            resp.raise_for_status()
             data = resp.json()
     except Exception:
         return {
@@ -118,78 +52,39 @@ out center;
             "places": [],
         }
 
-    raw_places = []
-    banned = [
-        "hotel",
-        "guest",
-        "lodge",
-        "residence",
-        "apartment",
-        "home",
-        "hostel",
-        "inn",
-        "residency",
-        "pg",
-        "bank",
-    ]
+    elements = data.get("elements", [])
+    results = []
 
-    for el in data.get("elements", []):
-        name = el.get("tags", {}).get("name")
+    banned = ["hotel", "resort", "hostel", "inn", "lodge", "pg", "residency"]
+
+    for el in elements:
+        tags = el.get("tags", {})
+        name = tags.get("name")
         if not name:
             continue
 
-        lower = name.lower()
-        if any(b in lower for b in banned):
+        if any(b in name.lower() for b in banned):
             continue
 
-        raw_places.append(name)
+        results.append(name)
 
-    # de-duplicate
-    unique = []
-    for p in raw_places:
-        if p not in unique:
-            unique.append(p)
+    # Remove duplicates
+    clean = []
+    for r in results:
+        if r not in clean:
+            clean.append(r)
 
-    unique = unique[:10]
+    clean = clean[:max_places]
 
-    if not unique:
+    if not clean:
         return {
             "success": True,
-            "message": f"No major tourist attractions found near {place_name}.",
+            "message": f"No attractions found near {place_name}.",
             "places": [],
         }
-
-    detailed = []
-    for name in unique:
-        wiki = await fetch_wikipedia_details(name)
-
-        if not wiki:
-            detailed.append(
-                {
-                    "name": name,
-                    "wiki_title": name,
-                    "thumbnail": None,
-                    "summary": "",
-                    "description": "",
-                    "popularity_score": 0.0,
-                }
-            )
-        else:
-            detailed.append(
-                {
-                    "name": name,
-                    "wiki_title": wiki["wiki_title"],
-                    "thumbnail": wiki["thumbnail"],
-                    "summary": wiki["summary"],
-                    "description": wiki["description"],
-                    "popularity_score": wiki["popularity_score"],
-                }
-            )
-
-    detailed.sort(key=lambda x: x["popularity_score"], reverse=True)
 
     return {
         "success": True,
         "message": f"Here are some popular places you can visit in or near {place_name}:",
-        "places": detailed[:max_places],
+        "places": clean,
     }

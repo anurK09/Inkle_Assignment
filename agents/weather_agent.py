@@ -1,6 +1,4 @@
-
-
-# agents/weather_agent.py
+#  agents/weather_agent.py
 
 import os
 import httpx
