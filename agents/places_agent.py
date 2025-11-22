@@ -127,6 +127,7 @@ async def get_places_for_place(place_name: str, max_places: int = 5):
     """
     Returns tourist places using ONLY Overpass API (stable for mobile + Streamlit).
     """
+
     lat, lon, display = await geocode_place(place_name)
 
     if lat is None:
@@ -136,9 +137,13 @@ async def get_places_for_place(place_name: str, max_places: int = 5):
             "places": [],
         }
 
-    # PURE TOURIST LOCATIONS (safe for API)
+    # REQUIRED HEADER → Overpass blocks Streamlit without this
+    headers = {
+        "User-Agent": "Inkle-Tourism-AI/1.0 (student project contact: test@example.com)"
+    }
+
     query = f"""
-[out:json][timeout:25];
+[out:json][timeout:30];
 (
   node["tourism"~"attraction|museum|gallery|zoo|viewpoint|park|castle|monument|theme_park"](around:15000,{lat},{lon});
   way["tourism"~"attraction|museum|gallery|zoo|viewpoint|park|castle|monument|theme_park"](around:15000,{lat},{lon});
@@ -148,11 +153,16 @@ out center;
 """
 
     try:
-        async with httpx.AsyncClient(timeout=25) as client:
-            resp = await client.post(OVERPASS_URL, data={"data": query})
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                OVERPASS_URL,
+                data={"data": query},
+                headers=headers  # required
+            )
             resp.raise_for_status()
             data = resp.json()
-    except:
+    except Exception as e:
+        print("OVERPASS ERROR:", e)
         return {
             "success": False,
             "message": "Unable to fetch tourist places right now.",
@@ -167,20 +177,21 @@ out center;
         if not name:
             continue
 
+        # skip hotels, hostels
         if any(b in name.lower() for b in banned):
             continue
 
         raw_names.append(name)
 
-    # remove duplicates
-    clean = []
+    # de-duplicate
+    result = []
     for n in raw_names:
-        if n not in clean:
-            clean.append(n)
+        if n not in result:
+            result.append(n)
 
-    clean = clean[:max_places]
+    result = result[:max_places]
 
-    if not clean:
+    if not result:
         return {
             "success": True,
             "message": f"No major tourist attractions found near {place_name}.",
@@ -190,5 +201,5 @@ out center;
     return {
         "success": True,
         "message": f"Here are some popular places you can visit in or near {place_name}:",
-        "places": clean,
+        "places": result,
     }
